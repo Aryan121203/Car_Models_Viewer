@@ -9,7 +9,7 @@ df["MSRP"] = df["MSRP"].replace("[$,]", "", regex=True).astype('int64')
 # Streamlit Page Setup
 st.set_page_config(page_title="Aryan's Car Explorer", layout="wide")
 st.markdown("<h1 style='text-align: center; color: #1f77b4;'>🚗 Aryan's Car Explorer</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Interactive dashboard to visualize car prices by Type, Make, and Model.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Explore and compare car prices interactively by Type, Make, and Model.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Sidebar filters
@@ -37,14 +37,18 @@ else:
 
 st.markdown("---")
 
+# Hover data: only include columns that exist
+possible_hover_cols = ["Type", "Origin", "Engine Fuel Type"]
+hover_cols = [col for col in possible_hover_cols if col in filtered_df.columns]
+
 # Plotting
 st.subheader("📈 MSRP Distribution by Model")
 fig = px.bar(
     filtered_df,
     x="Model",
     y="MSRP",
-    color="Make",
-    hover_data=["Type", "Origin", "Engine Fuel Type"],
+    color="Make" if "Make" in filtered_df.columns else None,
+    hover_data=hover_cols,
     title="MSRP Comparison of Selected Models",
     height=600
 )
