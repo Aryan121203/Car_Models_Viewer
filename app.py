@@ -9,7 +9,7 @@ df["MSRP"] = df["MSRP"].replace("[$,]", "", regex=True).astype('int64')
 # Streamlit Page Setup
 st.set_page_config(page_title="Aryan's Car Explorer", layout="wide")
 st.markdown("<h1 style='text-align: center; color: #1f77b4;'>🚗 Aryan's Car Explorer</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Explore and compare car prices interactively by Type, Make, and Model.</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>An interactive dashboard to explore and compare car prices.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Sidebar filters
@@ -25,45 +25,75 @@ min_price, max_price = int(filtered_df["MSRP"].min()), int(filtered_df["MSRP"].m
 price_range = st.sidebar.slider("💵 Select MSRP Range", min_price, max_price, (min_price, max_price))
 filtered_df = filtered_df[(filtered_df["MSRP"] >= price_range[0]) & (filtered_df["MSRP"] <= price_range[1])]
 
-# Metrics Display
-if not filtered_df.empty:
-    col1, col2, col3 = st.columns(3)
-    col1.metric("🔼 Highest Price", f"${filtered_df['MSRP'].max():,}")
-    col2.metric("🔽 Lowest Price", f"${filtered_df['MSRP'].min():,}")
-    col3.metric("📊 Average Price", f"${int(filtered_df['MSRP'].mean()):,}")
-else:
-    st.warning("No data matches your filters. Please adjust the filters in the sidebar.")
+search_model = st.sidebar.text_input("🔎 Search by Model Name")
+if search_model:
+    filtered_df = filtered_df[filtered_df["Model"].str.contains(search_model, case=False, na=False)]
+
+# Display metrics if data is available
+if filtered_df.empty:
+    st.warning("No data matches your filters. Please try again.")
     st.stop()
 
-st.markdown("---")
+# Show Live Summary
+st.markdown("### 📋 Data Summary")
+col1, col2, col3 = st.columns(3)
+col1.metric("🛠 Total Makes", filtered_df["Make"].nunique())
+col2.metric("🚘 Total Models", filtered_df["Model"].nunique())
+col3.metric("📊 Avg MSRP", f"${int(filtered_df['MSRP'].mean()):,}")
 
-# Hover data: only include columns that exist
-possible_hover_cols = ["Type", "Origin", "Engine Fuel Type"]
-hover_cols = [col for col in possible_hover_cols if col in filtered_df.columns]
+# Tabs for organization
+tab1, tab2, tab3 = st.tabs(["📈 MSRP Chart", "📊 Insights", "📄 Data Table"])
 
-# Plotting
-st.subheader("📈 MSRP Distribution by Model")
-fig = px.bar(
-    filtered_df,
-    x="Model",
-    y="MSRP",
-    color="Make" if "Make" in filtered_df.columns else None,
-    hover_data=hover_cols,
-    title="MSRP Comparison of Selected Models",
-    height=600
-)
-fig.update_layout(xaxis_tickangle=-45, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-st.plotly_chart(fig, use_container_width=True)
+# MSRP Chart Tab
+with tab1:
+    st.subheader("💰 MSRP by Car Model")
+    hover_cols = [col for col in ["Type", "Origin", "Engine Fuel Type"] if col in filtered_df.columns]
+    fig = px.bar(
+        filtered_df,
+        x="Model",
+        y="MSRP",
+        color="Make",
+        hover_data=hover_cols,
+        title="MSRP Comparison of Models",
+        height=600
+    )
+    fig.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig, use_container_width=True)
 
-# Expandable Data Table
-with st.expander("🔍 View Filtered Data Table"):
+# Insights Tab
+with tab2:
+    st.subheader("🌍 Car Origin Distribution")
+    if "Origin" in filtered_df.columns:
+        origin_fig = px.pie(
+            filtered_df,
+            names="Origin",
+            title="Distribution of Cars by Origin",
+            hole=0.4
+        )
+        st.plotly_chart(origin_fig, use_container_width=True)
+
+    st.subheader("📦 MSRP Box Plot by Car Type")
+    if "Type" in filtered_df.columns:
+        box_fig = px.box(
+            filtered_df,
+            x="Type",
+            y="MSRP",
+            color="Type",
+            title="Price Spread by Car Type",
+            points="all"
+        )
+        st.plotly_chart(box_fig, use_container_width=True)
+
+# Data Table Tab
+with tab3:
+    st.subheader("📄 Filtered Car Data")
     st.dataframe(filtered_df, use_container_width=True)
 
-# CSV Download Button
-csv = filtered_df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    label="📥 Download Filtered Data as CSV",
-    data=csv,
-    file_name="filtered_cars.csv",
-    mime="text/csv",
-)
+    # Download CSV
+    csv = filtered_df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Download CSV",
+        data=csv,
+        file_name="filtered_cars.csv",
+        mime="text/csv"
+    )
