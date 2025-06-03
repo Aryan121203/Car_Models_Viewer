@@ -9,7 +9,7 @@ df = pd.read_csv("CARS.csv")
 # Clean the MSRP column
 df["MSRP"] = df["MSRP"].replace("[$,]", "", regex=True).astype('int64')
 
-st.title("Car Price Visualization App")
+st.title("Car Price Visualization App By Aryan")
 
 # Dropdown for car Type
 car_types = df["Type"].unique()
